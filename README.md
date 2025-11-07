@@ -75,4 +75,4 @@ python3 Roles.py --tos Alice Bob Carol -f
 
 ## License
 
-MIT License
+[MIT License](/LICENSE)
