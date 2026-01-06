@@ -3,9 +3,10 @@
 import argparse
 import sys
 from datetime import datetime, timedelta
+from typing import List, Tuple
 
 
-def parse_arguments():
+def parse_arguments() -> argparse.Namespace:
     """Parse command line arguments for TO rotation schedule generation."""
     parser = argparse.ArgumentParser(
         description="Manage TO rotation for the next 2 months of Cycles."
@@ -22,14 +23,25 @@ def parse_arguments():
         action="store_true",
         help="Print to file instead of terminal.",
     )
+    parser.add_argument(
+        "--days",
+        type=int,
+        default=60,
+        help="Number of days for the rotation schedule (default: 60).",
+    )
+    parser.add_argument(
+        "--start-date",
+        type=str,
+        help="Start date for the rotation (YYYY-MM-DD format). Default is today.",
+    )
     return parser.parse_args()
 
 
-def parse_file():
+def parse_file() -> List[str]:
     """Read TO names from TO_List.txt file.
 
     Returns:
-        list: List of TO names, with empty lines and lines starting with '---' filtered out.
+        List[str]: List of TO names, with empty lines and lines starting with '---' filtered out.
 
     Raises:
         FileNotFoundError: If TO_List.txt does not exist.
@@ -47,24 +59,33 @@ def parse_file():
         sys.exit(1)
 
 
-def generate_rotation(tos):
-    """Generate a weekly TO rotation schedule for the next 60 days on Wednesdays.
+def generate_rotation(
+    tos: List[str], num_days: int = 60, start_date: datetime | None = None
+) -> List[Tuple[str, str]]:
+    """Generate a weekly TO rotation schedule on Wednesdays.
 
     Args:
-        tos (list): List of TO names to rotate.
+        tos (List[str]): List of TO names to rotate.
+        num_days (int): Number of days for the rotation (default: 60).
+        start_date (datetime | None): Start date for the rotation. Default is today.
 
     Returns:
-        list: List of (date, TO_name) tuples for each Wednesday in the rotation period.
+        List[Tuple[str, str]]: List of (date, TO_name) tuples for each Wednesday in the rotation period.
 
     Raises:
-        ValueError: If the tos list is empty.
+        ValueError: If the tos list is empty or contains empty strings.
     """
     if not tos:
         raise ValueError("TO list cannot be empty.")
 
+    tos = [to.strip() for to in tos]
+    if any(not to for to in tos):
+        raise ValueError("TO names cannot be empty strings.")
+
     rotation = []
-    start_date = datetime.now()
-    end_date = start_date + timedelta(days=60)
+    if start_date is None:
+        start_date = datetime.now()
+    end_date = start_date + timedelta(days=num_days)
 
     # Find the first Wednesday
     current_date = start_date
@@ -81,11 +102,11 @@ def generate_rotation(tos):
     return rotation
 
 
-def print_to_file(tos):
+def print_to_file(tos: List[Tuple[str, str]]) -> None:
     """Write the TO rotation schedule to TO_Rotation.txt.
 
     Args:
-        tos (list): List of (date, TO_name) tuples from generate_rotation().
+        tos (List[Tuple[str, str]]): List of (date, TO_name) tuples from generate_rotation().
     """
     print("Printing to TO_Rotation.txt...\n")
     with open("TO_Rotation.txt", "w") as file:
@@ -99,11 +120,11 @@ def print_to_file(tos):
             TO_two = TO_one
 
 
-def print_to_terminal(tos):
+def print_to_terminal(tos: List[Tuple[str, str]]) -> None:
     """Print the TO rotation schedule to the terminal.
 
     Args:
-        tos (list): List of (date, TO_name) tuples from generate_rotation().
+        tos (List[Tuple[str, str]]): List of (date, TO_name) tuples from generate_rotation().
     """
     print("Printing to terminal...\n")
     TO_two = tos[-1][1] if len(tos) > 1 else "N/A"
@@ -116,7 +137,7 @@ def print_to_terminal(tos):
         TO_two = TO_one
 
 
-def main():
+def main() -> None:
     """Main entry point for the TO rotation schedule generator."""
     args = parse_arguments()
     tos = args.tos
@@ -128,8 +149,16 @@ def main():
             print("No TOs found in the file. Exiting.")
             return
 
+    start_date = None
+    if args.start_date:
+        try:
+            start_date = datetime.strptime(args.start_date, "%Y-%m-%d")
+        except ValueError:
+            print(f"Error: Invalid start date format. Please use YYYY-MM-DD format.")
+            sys.exit(1)
+
     try:
-        rotation = generate_rotation(tos)
+        rotation = generate_rotation(tos, num_days=args.days, start_date=start_date)
     except ValueError as e:
         print(f"Error: {e}")
         sys.exit(1)
