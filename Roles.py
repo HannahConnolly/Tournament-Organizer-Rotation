@@ -1,6 +1,7 @@
 # This script accepts a list of TOs that will be in rotation for the next 2 months of Cycles
 
 import argparse
+import csv
 import sys
 from datetime import datetime, timedelta
 from typing import List, Tuple
@@ -22,6 +23,11 @@ def parse_arguments() -> argparse.Namespace:
         "--file",
         action="store_true",
         help="Print to file instead of terminal.",
+    )
+    parser.add_argument(
+        "--csv",
+        action="store_true",
+        help="Export rotation to CSV file (TO_Rotation.csv).",
     )
     parser.add_argument(
         "--days",
@@ -137,6 +143,25 @@ def print_to_terminal(tos: List[Tuple[str, str]]) -> None:
         TO_two = TO_one
 
 
+def export_to_csv(tos: List[Tuple[str, str]]) -> None:
+    """Export the TO rotation schedule to a CSV file.
+
+    Args:
+        tos (List[Tuple[str, str]]): List of (date, TO_name) tuples from generate_rotation().
+    """
+    print("Exporting to TO_Rotation.csv...\n")
+    with open("TO_Rotation.csv", "w", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerow(["Date", "TO 1", "TO 2"])
+
+        TO_two = tos[-1][1] if len(tos) > 1 else "N/A"
+
+        for date, TO_one in tos:
+            formatted_date = datetime.strptime(date, "%Y-%m-%d").strftime("%b %d")
+            writer.writerow([formatted_date, TO_one, TO_two])
+            TO_two = TO_one
+
+
 def main() -> None:
     """Main entry point for the TO rotation schedule generator."""
     args = parse_arguments()
@@ -163,7 +188,12 @@ def main() -> None:
         print(f"Error: {e}")
         sys.exit(1)
 
-    print_to_file(rotation) if args.file else print_to_terminal(rotation)
+    if args.csv:
+        export_to_csv(rotation)
+    elif args.file:
+        print_to_file(rotation)
+    else:
+        print_to_terminal(rotation)
 
     print("Done.")
 
